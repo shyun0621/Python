@@ -14,7 +14,10 @@ class Serial:
 
     def writeGEACommand(self, value):
         print(value)
-        # self.ser.write(value)
+        if type(value) is bool:
+            self.ser.write(str(value).encode())
+        if type(value) is str:
+            self.ser.write(value.encode())
 
 class UI:
     def draw(self):

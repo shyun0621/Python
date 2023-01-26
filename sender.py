@@ -1,6 +1,18 @@
 import tkinter as tk
 import serial
 
+PACKET_START_IDX=226
+PACKET_END_IDX=227
+COMMAND_RTD_SWITCH=0
+COMMAND_DOORSW_SWITCH=1
+COMMAND_DOORLOCK_SWITCH=2
+COMMAND_PROBE_SWITCH=3
+COMMAND_MISWIRE_SWITCH=4
+COMMAND_RTD_SCALE=6
+COMMAND_PROBE_SCALE=7
+DATA_SWITCH_ON=1
+DATA_SWITCH_OFF=0
+
 class Serial:
     def __init__(self):
         self.ser = serial.Serial(
@@ -54,26 +66,57 @@ class UI:
         btn_miswire_on = tk.Radiobutton(frame_miswire, text="on", width=7, value=True, variable=miswire_var, command=check_miswire).pack()
         btn_miswire_off = tk.Radiobutton(frame_miswire, text="off", width=7, value=False, variable=miswire_var, command=check_miswire).pack()
 
+def gen_packet(command, val):
+    packet = '{:02X}'.format(PACKET_START_IDX) + '{:02X}'.format(command) + '{:04X}'.format(int(val)) + '{:02X}'.format(PACKET_END_IDX)
+    return packet
+
 def select_rtd_scale(val):
-    serial.writeGEACommand(val);
+    packet = gen_packet(COMMAND_RTD_SCALE, val)
+    serial.writeGEACommand(packet);
     
 def select_probe_scale(val):
-    serial.writeGEACommand(val);
+    packet = gen_packet(COMMAND_PROBE_SCALE, val)
+    serial.writeGEACommand(packet);
 
 def check_rtd():
-    serial.writeGEACommand(rtd_var.get());
+    if rtd_var.get():
+        packet = gen_packet(COMMAND_RTD_SWITCH, DATA_SWITCH_ON)
+        serial.writeGEACommand(packet);   
+    else:
+        packet = gen_packet(COMMAND_RTD_SWITCH, DATA_SWITCH_OFF)
+        serial.writeGEACommand(packet);   
 
 def check_doorsw():
-    serial.writeGEACommand(doorsw_var.get());
+    if doorsw_var.get():
+        packet = gen_packet(COMMAND_DOORSW_SWITCH, DATA_SWITCH_ON)
+        serial.writeGEACommand(packet);   
+    else:
+        packet = gen_packet(COMMAND_DOORSW_SWITCH, DATA_SWITCH_OFF)
+        serial.writeGEACommand(packet);   
 
 def check_doorlock():
-    serial.writeGEACommand(doorlock_var.get());
+    if doorlock_var.get():
+        packet = gen_packet(COMMAND_DOORLOCK_SWITCH, DATA_SWITCH_ON)
+        serial.writeGEACommand(packet);   
+    else:
+        packet = gen_packet(COMMAND_DOORLOCK_SWITCH, DATA_SWITCH_OFF)
+        serial.writeGEACommand(packet);   
 
 def check_probe():
-    serial.writeGEACommand(probe_var.get());
+    if probe_var.get():
+        packet = gen_packet(COMMAND_PROBE_SWITCH, DATA_SWITCH_ON)
+        serial.writeGEACommand(packet);   
+    else:
+        packet = gen_packet(COMMAND_PROBE_SWITCH, DATA_SWITCH_OFF)
+        serial.writeGEACommand(packet);   
 
 def check_miswire():
-    serial.writeGEACommand(miswire_var.get());
+    if miswire_var.get():
+        packet = gen_packet(COMMAND_MISWIRE_SWITCH, DATA_SWITCH_ON)
+        serial.writeGEACommand(packet);   
+    else:
+        packet = gen_packet(COMMAND_MISWIRE_SWITCH, DATA_SWITCH_OFF)
+        serial.writeGEACommand(packet);   
    
 root = tk.Tk()
 serial = Serial()

@@ -56,7 +56,7 @@ class UI:
         frame_miswire = tk.LabelFrame(root, width=8, text = "MISWIRE")
         
         frame_rtd_cb.grid(row=1, column=1, rowspan=3, columnspan=5, padx=10, pady=10)
-        frame_probe_cb.grid(row=2, column=1, rowspan=3, columnspan=5)
+        frame_probe_cb.grid(row=3, column=1, rowspan=3, columnspan=5)
         frame_rtd.grid(row=1, column=6, padx=10, pady=10)
         frame_doorsw.grid(row=2, column=6)
         frame_doorlock.grid(row=3, column=6)
@@ -91,11 +91,11 @@ def gen_packet(command, val):
     return packet
 
 def rtd_changed(event):
-    packet = gen_packet(COMMAND_RTD_FAHRENHEIT, event.widget.current())
+    packet = gen_packet(COMMAND_RTD_FAHRENHEIT, event.widget.get())
     serial.writeGEACommand(packet)
 
 def probe_changed(event):
-    packet = gen_packet(COMMAND_PROBE_FAHRENHEIT, event.widget.current())
+    packet = gen_packet(COMMAND_PROBE_FAHRENHEIT, event.widget.get())
     serial.writeGEACommand(packet)
 
 def check_rtd():

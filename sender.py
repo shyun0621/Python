@@ -1,6 +1,9 @@
 import tkinter as tk
 import tkinter.ttk as ttk
 import serial
+import threading
+import signal
+import time
 
 PACKET_START_IDX=226
 PACKET_END_IDX=227
@@ -45,6 +48,9 @@ class Serial:
         if type(value) is str:
             self.ser.write(value.encode())
 
+    def getSerial(self):
+        return self.ser
+
 class UI:
     def draw(self):
         frame_rtd_cb = tk.LabelFrame(root, text = "RTD")
@@ -85,6 +91,19 @@ class UI:
 
         btn_miswire_on = tk.Radiobutton(frame_miswire, text="on", width=7, value=True, variable=miswire_var, command=check_miswire).pack()
         btn_miswire_off = tk.Radiobutton(frame_miswire, text="off", width=7, value=False, variable=miswire_var, command=check_miswire).pack()
+
+def handler(signum, frame):
+    global exitThread
+    print("Thread stop")
+    exitThread = True
+
+def readThread(ser):
+    global exitThread
+    while not exitThread:
+        if ser.readable():
+            res = ser.readline().decode('utf-8')
+            if res:
+                print(res)
 
 def gen_packet(command, val):
     packet = '{:02X}'.format(PACKET_START_IDX) + '{:02X}'.format(command) + '{:04X}'.format(int(val)) + '{:02X}'.format(PACKET_END_IDX)
@@ -148,6 +167,7 @@ doorsw_var = tk.BooleanVar()
 doorlock_var = tk.BooleanVar()
 probe_var = tk.BooleanVar()
 miswire_var = tk.BooleanVar()
+exitThread = False
 
 def main():
     root.title("Loadbox Emulator")
@@ -155,6 +175,10 @@ def main():
     
     ui = UI()
     ui.draw()
+
+    signal.signal(signal.SIGINT|signal.SIGKILL, handler)    
+    thread = threading.Thread(target=readThread, args=[serial.getSerial()])
+    thread.start()
     
     root.mainloop()
     

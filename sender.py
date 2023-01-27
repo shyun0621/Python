@@ -1,4 +1,5 @@
 import tkinter as tk
+import tkinter.ttk as ttk
 import serial
 
 PACKET_START_IDX=226
@@ -8,10 +9,23 @@ COMMAND_DOORSW_SWITCH=1
 COMMAND_DOORLOCK_SWITCH=2
 COMMAND_PROBE_SWITCH=3
 COMMAND_MISWIRE_SWITCH=4
-COMMAND_RTD_SCALE=6
-COMMAND_PROBE_SCALE=7
+COMMAND_RTD_FAHRENHEIT=6
+COMMAND_PROBE_FAHRENHEIT=7
 DATA_SWITCH_ON=1
 DATA_SWITCH_OFF=0
+
+rtd = [
+     32,  60,  80,  90, 100, 140, 170, 180, 190, 200, 210, 220, 230, 240, 250, 260, 270,
+    280, 290, 300, 310, 320, 330, 340, 350, 360, 370, 380, 390, 400, 410, 420, 430, 440, 
+    450, 460, 470, 480, 490, 500, 510, 520, 530, 540, 550, 560, 570, 580, 590, 600, 610,
+    620, 650, 700, 750, 800, 825, 850, 875, 900, 950, 1000
+]
+
+probe = [
+      0,   5,  10,  15,  20,  25,  30,  35,  40,  45,  50,  55,  60,  65,  70,  75,  80,
+     85,  90,  95, 100, 105, 110, 115, 120, 125, 130, 135, 140, 145, 150, 155, 160, 165, 
+    170, 175, 180, 185, 190, 195, 200
+]
 
 class Serial:
     def __init__(self):
@@ -33,24 +47,30 @@ class Serial:
 
 class UI:
     def draw(self):
-        scale_rtd = tk.LabelFrame(root,text = "RTD")
-        scale_probe = tk.LabelFrame(root, text = "RROBE")
+        frame_rtd_cb = tk.LabelFrame(root, text = "RTD")
+        frame_probe_cb = tk.LabelFrame(root, text = "PROBE")
         frame_rtd = tk.LabelFrame(root, text = "RTD")
         frame_doorsw = tk.LabelFrame(root, width=8, text = "DOOR SW")
         frame_doorlock = tk.LabelFrame(root, width=8, text = "DOOR LOCK")
         frame_probe = tk.LabelFrame(root, width=8, text = "PROBE")
         frame_miswire = tk.LabelFrame(root, width=8, text = "MISWIRE")
         
-        scale_rtd.grid(row=1, column=1, rowspan=3, columnspan=5, padx=10, pady=10)
-        scale_probe.grid(row=2, column=1, rowspan=3, columnspan=5)
+        frame_rtd_cb.grid(row=1, column=1, rowspan=3, columnspan=5, padx=10, pady=10)
+        frame_probe_cb.grid(row=2, column=1, rowspan=3, columnspan=5)
         frame_rtd.grid(row=1, column=6, padx=10, pady=10)
         frame_doorsw.grid(row=2, column=6)
         frame_doorlock.grid(row=3, column=6)
         frame_probe.grid(row=4, column=6)
         frame_miswire.grid(row=5, column=6)
 
-        sc_rtd = tk.Scale(scale_rtd, variable=rtd_sc_var, command=select_rtd_scale, orient="horizontal", showvalue=True, tickinterval=0, to=450, length=300).pack()
-        sc_probe = tk.Scale(scale_probe, variable=probe_sc_var, command=select_probe_scale, orient="horizontal", showvalue=True, tickinterval=0, to=450, length=300).pack()
+        cb_rtd = ttk.Combobox(frame_rtd_cb, height=5, values=rtd)
+        cb_rtd.set("Select RTD(F)")
+        cb_rtd.pack()
+        cb_rtd.bind("<<ComboboxSelected>>", rtd_changed)
+        cb_probe = ttk.Combobox(frame_probe_cb, height=5, values=probe)
+        cb_probe.set("Select PROBE(F)")
+        cb_probe.pack()
+        cb_probe.bind("<<ComboboxSelected>>", probe_changed)
 
         btn_rtd_on = tk.Radiobutton(frame_rtd, text="on", width=7, value=True, variable=rtd_var, command=check_rtd).pack()
         btn_rtd_off = tk.Radiobutton(frame_rtd, text="off", width=7, value=False, variable=rtd_var, command=check_rtd).pack()
@@ -70,13 +90,13 @@ def gen_packet(command, val):
     packet = '{:02X}'.format(PACKET_START_IDX) + '{:02X}'.format(command) + '{:04X}'.format(int(val)) + '{:02X}'.format(PACKET_END_IDX)
     return packet
 
-def select_rtd_scale(val):
-    packet = gen_packet(COMMAND_RTD_SCALE, val)
-    serial.writeGEACommand(packet);
-    
-def select_probe_scale(val):
-    packet = gen_packet(COMMAND_PROBE_SCALE, val)
-    serial.writeGEACommand(packet);
+def rtd_changed(event):
+    packet = gen_packet(COMMAND_RTD_FAHRENHEIT, event.widget.current())
+    serial.writeGEACommand(packet)
+
+def probe_changed(event):
+    packet = gen_packet(COMMAND_PROBE_FAHRENHEIT, event.widget.current())
+    serial.writeGEACommand(packet)
 
 def check_rtd():
     if rtd_var.get():

@@ -3,7 +3,8 @@ import tkinter.ttk as ttk
 import serial
 import threading
 import signal
-import time
+import RPi.GPIO as GPIO
+from time import sleep
 
 PACKET_START_IDX=226
 PACKET_END_IDX=227
@@ -16,6 +17,7 @@ COMMAND_RTD_FAHRENHEIT=6
 COMMAND_PROBE_FAHRENHEIT=7
 DATA_SWITCH_ON=1
 DATA_SWITCH_OFF=0
+buzzerPin=14
 
 rtd = [
      32,  60,  80,  90, 100, 140, 170, 180, 190, 200, 210, 220, 230, 240, 250, 260, 270,
@@ -29,6 +31,34 @@ probe = [
      85,  90,  95, 100, 105, 110, 115, 120, 125, 130, 135, 140, 145, 150, 155, 160, 165, 
     170, 175, 180, 185, 190, 195, 200
 ]
+
+class Buzz:
+    def __init__(self):
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setwarnings(False)
+        GPIO.setup(buzzerPin, GPIO.OUT)
+        self.buzz = GPIO.PWM(buzzerPin, 440)
+    
+    def getBuzz(self):
+        return self.buzz
+    
+    def buzzerPlay(self, freq, duty_cycle, duration):
+        self.buzz.start(duty_cycle)
+        self.buzz.ChangeFrequency(freq)
+        sleep(duration)
+        self.buzz.stop()
+
+    def down_sound(self):
+        print("down_sound")
+        self.buzzerPlay(440, 95, 0.2)
+        sleep(0.05)
+        self.buzzerPlay(220, 95, 0.2)
+
+    def up_sound(self):
+        print("down_sound")
+        self.buzzerPlay(220, 95, 0.2)
+        sleep(0.05)
+        self.buzzerPlay(440, 95, 0.2)
 
 class Serial:
     def __init__(self):
@@ -45,8 +75,10 @@ class Serial:
         print(value)
         if type(value) is bool:
             self.ser.write(str(value).encode())
-        if type(value) is str:
+        elif type(value) is str:
             self.ser.write(value.encode())
+        else:
+            self.ser.write(value)
 
     def getSerial(self):
         return self.ser
@@ -109,8 +141,18 @@ def gen_packet(command, val):
     packet = '{:02X}'.format(PACKET_START_IDX) + '{:02X}'.format(command) + '{:04X}'.format(int(val)) + '{:02X}'.format(PACKET_END_IDX)
     return packet
 
+def gen_packet_int(command, val):
+    packet = bytearray(5)
+    packet[0] = PACKET_START_IDX & 0x000000ff
+    packet[1] = command & 0x000000ff
+    packet[2] = int(val).to_bytes(2, 'big')[0]
+    packet[3] = int(val).to_bytes(2, 'big')[1]
+    packet[4] = PACKET_END_IDX & 0x000000ff
+    return packet
+
 def rtd_changed(event):
-    packet = gen_packet(COMMAND_RTD_FAHRENHEIT, event.widget.get())
+#    packet = gen_packet(COMMAND_RTD_FAHRENHEIT, event.widget.get())
+    packet = gen_packet_int(COMMAND_RTD_FAHRENHEIT, event.widget.get())
     serial.writeGEACommand(packet)
 
 def probe_changed(event):
@@ -156,7 +198,7 @@ def check_miswire():
     else:
         packet = gen_packet(COMMAND_MISWIRE_SWITCH, DATA_SWITCH_OFF)
         serial.writeGEACommand(packet);   
-   
+
 root = tk.Tk()
 serial = Serial()
 
@@ -168,6 +210,7 @@ doorlock_var = tk.BooleanVar()
 probe_var = tk.BooleanVar()
 miswire_var = tk.BooleanVar()
 exitThread = False
+buzz = Buzz()
 
 def main():
     root.title("Loadbox Emulator")
@@ -179,7 +222,7 @@ def main():
     signal.signal(signal.SIGINT|signal.SIGKILL, handler)    
     thread = threading.Thread(target=readThread, args=[serial.getSerial()])
     thread.start()
-    
+
     root.mainloop()
     
 if __name__ == "__main__":

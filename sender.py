@@ -21,14 +21,14 @@ buzzerPin=14
 
 rtd = [
      32,  60,  80,  90, 100, 140, 170, 180, 190, 200, 210, 220, 230, 240, 250, 260, 270,
-    280, 290, 300, 310, 320, 330, 340, 350, 360, 370, 380, 390, 400, 410, 420, 430, 440, 
+    280, 290, 300, 310, 320, 330, 340, 350, 360, 370, 380, 390, 400, 410, 420, 430, 440,
     450, 460, 470, 480, 490, 500, 510, 520, 530, 540, 550, 560, 570, 580, 590, 600, 610,
     620, 650, 700, 750, 800, 825, 850, 875, 900, 950, 1000
 ]
 
 probe = [
       0,   5,  10,  15,  20,  25,  30,  35,  40,  45,  50,  55,  60,  65,  70,  75,  80,
-     85,  90,  95, 100, 105, 110, 115, 120, 125, 130, 135, 140, 145, 150, 155, 160, 165, 
+     85,  90,  95, 100, 105, 110, 115, 120, 125, 130, 135, 140, 145, 150, 155, 160, 165,
     170, 175, 180, 185, 190, 195, 200
 ]
 
@@ -38,10 +38,10 @@ class Buzz:
         GPIO.setwarnings(False)
         GPIO.setup(buzzerPin, GPIO.OUT)
         self.buzz = GPIO.PWM(buzzerPin, 440)
-    
+
     def getBuzz(self):
         return self.buzz
-    
+
     def buzzerPlay(self, freq, duty_cycle, duration):
         self.buzz.start(duty_cycle)
         self.buzz.ChangeFrequency(freq)
@@ -55,21 +55,21 @@ class Buzz:
         self.buzzerPlay(220, 95, 0.2)
 
     def up_sound(self):
-        print("down_sound")
+        print("up_sound")
         self.buzzerPlay(220, 95, 0.2)
         sleep(0.05)
         self.buzzerPlay(440, 95, 0.2)
 
 class Serial:
-    def __init__(self):
+    def __init__(self, dev):
         self.ser = serial.Serial(
-            port='/dev/ttyAMA1',
+            port=dev,
             baudrate=115200,
             parity=serial.PARITY_NONE,
             stopbits=serial.STOPBITS_ONE,
             bytesize=serial.EIGHTBITS,
             timeout=1
-            )        
+            )
 
     def writeGEACommand(self, value):
         print(value)
@@ -92,7 +92,7 @@ class UI:
         frame_doorlock = tk.LabelFrame(root, width=8, text = "DOOR LOCK")
         frame_probe = tk.LabelFrame(root, width=8, text = "PROBE")
         frame_miswire = tk.LabelFrame(root, width=8, text = "MISWIRE")
-        
+
         frame_rtd_cb.grid(row=1, column=1, rowspan=3, columnspan=5, padx=10, pady=10)
         frame_probe_cb.grid(row=3, column=1, rowspan=3, columnspan=5)
         frame_rtd.grid(row=1, column=6, padx=10, pady=10)
@@ -131,11 +131,31 @@ def handler(signum, frame):
 
 def readThread(ser):
     global exitThread
+    line = []
+    append = False
     while not exitThread:
         if ser.readable():
-            res = ser.readline().decode('utf-8')
-            if res:
-                print(res)
+            for c in ser.read():
+                if c == 0xE2:
+                    if append:
+                        if len(line) > 10:
+                            if line[6] == '0xfc' and line[7] == '0x34':
+                                if line[9] == '0x1' and line[10] == '0x1':
+                                    buzz.up_sound()
+                                elif line[9] == '0x0' and line[10] == '0x0':
+                                    buzz.down_sound()
+                        print(line)
+                        del line[:]
+
+                    append = True
+                if c == 0xE3:
+                    append = False
+                    line.append(hex(c))
+                    print(line)
+                    del line[:]
+
+                if append:
+                    line.append(hex(c))
 
 def gen_packet(command, val):
     packet = '{:02X}'.format(PACKET_START_IDX) + '{:02X}'.format(command) + '{:04X}'.format(int(val)) + '{:02X}'.format(PACKET_END_IDX)
@@ -156,51 +176,51 @@ def rtd_changed(event):
     serial.writeGEACommand(packet)
 
 def probe_changed(event):
-    packet = gen_packet(COMMAND_PROBE_FAHRENHEIT, event.widget.get())
+    packet = gen_packet_int(COMMAND_PROBE_FAHRENHEIT, event.widget.get())
     serial.writeGEACommand(packet)
 
 def check_rtd():
     if rtd_var.get():
-        packet = gen_packet(COMMAND_RTD_SWITCH, DATA_SWITCH_ON)
-        serial.writeGEACommand(packet);   
+        packet = gen_packet_int(COMMAND_RTD_SWITCH, DATA_SWITCH_ON)
+        serial.writeGEACommand(packet);
     else:
-        packet = gen_packet(COMMAND_RTD_SWITCH, DATA_SWITCH_OFF)
-        serial.writeGEACommand(packet);   
+        packet = gen_packet_int(COMMAND_RTD_SWITCH, DATA_SWITCH_OFF)
+        serial.writeGEACommand(packet);
 
 def check_doorsw():
     if doorsw_var.get():
-        packet = gen_packet(COMMAND_DOORSW_SWITCH, DATA_SWITCH_ON)
-        serial.writeGEACommand(packet);   
+        packet = gen_packet_int(COMMAND_DOORSW_SWITCH, DATA_SWITCH_ON)
+        serial.writeGEACommand(packet);
     else:
-        packet = gen_packet(COMMAND_DOORSW_SWITCH, DATA_SWITCH_OFF)
-        serial.writeGEACommand(packet);   
+        packet = gen_packet_int(COMMAND_DOORSW_SWITCH, DATA_SWITCH_OFF)
+        serial.writeGEACommand(packet);
 
 def check_doorlock():
     if doorlock_var.get():
-        packet = gen_packet(COMMAND_DOORLOCK_SWITCH, DATA_SWITCH_ON)
-        serial.writeGEACommand(packet);   
+        packet = gen_packet_int(COMMAND_DOORLOCK_SWITCH, DATA_SWITCH_ON)
+        serial.writeGEACommand(packet);
     else:
-        packet = gen_packet(COMMAND_DOORLOCK_SWITCH, DATA_SWITCH_OFF)
-        serial.writeGEACommand(packet);   
+        packet = gen_packet_int(COMMAND_DOORLOCK_SWITCH, DATA_SWITCH_OFF)
+        serial.writeGEACommand(packet);
 
 def check_probe():
     if probe_var.get():
-        packet = gen_packet(COMMAND_PROBE_SWITCH, DATA_SWITCH_ON)
-        serial.writeGEACommand(packet);   
+        packet = gen_packet_int(COMMAND_PROBE_SWITCH, DATA_SWITCH_ON)
+        serial.writeGEACommand(packet);
     else:
-        packet = gen_packet(COMMAND_PROBE_SWITCH, DATA_SWITCH_OFF)
-        serial.writeGEACommand(packet);   
+        packet = gen_packet_int(COMMAND_PROBE_SWITCH, DATA_SWITCH_OFF)
+        serial.writeGEACommand(packet);
 
 def check_miswire():
     if miswire_var.get():
-        packet = gen_packet(COMMAND_MISWIRE_SWITCH, DATA_SWITCH_ON)
-        serial.writeGEACommand(packet);   
+        packet = gen_packet_int(COMMAND_MISWIRE_SWITCH, DATA_SWITCH_ON)
+        serial.writeGEACommand(packet);
     else:
-        packet = gen_packet(COMMAND_MISWIRE_SWITCH, DATA_SWITCH_OFF)
-        serial.writeGEACommand(packet);   
+        packet = gen_packet_int(COMMAND_MISWIRE_SWITCH, DATA_SWITCH_OFF)
+        serial.writeGEACommand(packet);
 
 root = tk.Tk()
-serial = Serial()
+serial = Serial('/dev/ttyAMA1')
 
 rtd_sc_var = tk.IntVar()
 probe_sc_var = tk.IntVar()
@@ -215,15 +235,15 @@ buzz = Buzz()
 def main():
     root.title("Loadbox Emulator")
     root.geometry("500x400+200+200")
-    
+
     ui = UI()
     ui.draw()
 
-    signal.signal(signal.SIGINT|signal.SIGKILL, handler)    
+    signal.signal(signal.SIGINT|signal.SIGKILL, handler)
     thread = threading.Thread(target=readThread, args=[serial.getSerial()])
     thread.start()
 
     root.mainloop()
-    
+
 if __name__ == "__main__":
 	main()
